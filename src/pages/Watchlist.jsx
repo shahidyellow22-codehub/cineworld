@@ -1,90 +1,65 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
-const API_URL = "http://127.0.0.1:5001/api";
+import PosterGridSkeleton from "../components/PosterGridSkeleton";
+
+import { useSavedItems } from "../context/SavedItemsContext";
+
+// ==========================================
+// ICONS
+// ==========================================
+
+function BookmarkIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+    </svg>
+  );
+}
+
+// ==========================================
+// WATCHLIST
+// ==========================================
 
 function Watchlist() {
-  const [watchlist, setWatchlist] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    status,
+    isAuthenticated,
+    watchlist,
+    savedError,
+    removeWatchlist,
+  } = useSavedItems();
+
+  const [loggedOut, setLoggedOut] = useState(false);
   const [error, setError] = useState("");
 
-  const user = (() => {
-    try {
-      const savedUser = localStorage.getItem("cineworld_user");
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
-  })();
+  const loading = status === "loading";
+
+  const displayError = error || savedError;
 
   // ==========================================
-  // LOAD WATCHLIST
+  // REMOVE FROM WATCHLIST
   // ==========================================
 
-  useEffect(() => {
-    loadWatchlist();
-  }, []);
-
-  async function loadWatchlist() {
-    if (!user) {
-      setWatchlist([]);
-      setLoading(false);
-      return;
-    }
-
+  async function handleRemove(item) {
     try {
-      setLoading(true);
+      await removeWatchlist(item.movie_id, item.media_type);
       setError("");
-
-      const response = await fetch(
-        `${API_URL}/watchlist/${user.id}`
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to load watchlist"
-        );
+    } catch (err) {
+      if (err.status === 401) {
+        setLoggedOut(true);
+      } else {
+        console.error("Remove watchlist error:", err);
+        setError("Couldn't remove that item right now.");
       }
-
-      setWatchlist(data.watchlist || []);
-    } catch (error) {
-      console.error("Watchlist error:", error);
-      setError("Unable to load watchlist.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ==========================================
-  // REMOVE WATCHLIST
-  // ==========================================
-
-  async function handleRemove(itemId) {
-    try {
-      const response = await fetch(
-        `${API_URL}/watchlist/${itemId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to remove watchlist item"
-        );
-      }
-
-      // Remove immediately from screen
-      setWatchlist((current) =>
-        current.filter((item) => item.id !== itemId)
-      );
-    } catch (error) {
-      console.error("Remove watchlist error:", error);
-      setError("Unable to remove watchlist item.");
     }
   }
 
@@ -92,13 +67,13 @@ function Watchlist() {
   // NOT LOGGED IN
   // ==========================================
 
-  if (!user) {
+  if (loggedOut || (status === "ready" && !isAuthenticated)) {
     return (
-      <div className="min-h-screen bg-black text-white px-6 py-10">
+      <div className="bg-black text-white px-6 py-10">
         <div className="max-w-7xl mx-auto text-center py-20">
 
           <h1 className="text-4xl font-bold mb-4">
-            🔖 My Watchlist
+            My Watchlist
           </h1>
 
           <p className="text-gray-400 mb-6">
@@ -107,7 +82,7 @@ function Watchlist() {
 
           <Link
             to="/login"
-            className="inline-block bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold"
+            className="inline-block bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold transition"
           >
             Login
           </Link>
@@ -122,67 +97,55 @@ function Watchlist() {
   // ==========================================
 
   return (
-    <div className="min-h-screen bg-black text-white px-6 py-10">
+    <div className="bg-black text-white px-6 py-10">
 
       <div className="max-w-7xl mx-auto">
 
-        <h1 className="text-4xl font-bold mb-8">
-          🔖 My Watchlist
+        <h1 className="text-4xl font-bold mb-2">
+          My Watchlist
         </h1>
+
+        {displayError && (
+          <p className="mb-6 text-sm text-red-400/90">
+            {displayError}
+          </p>
+        )}
 
         {/* LOADING */}
 
-        {loading && (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">
-              Loading watchlist...
-            </p>
-          </div>
-        )}
-
-        {/* ERROR */}
-
-        {!loading && error && (
-          <div className="text-center py-20">
-
-            <p className="text-red-400 text-lg">
-              {error}
-            </p>
-
-            <button
-              onClick={loadWatchlist}
-              className="mt-4 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-lg"
-            >
-              Try Again
-            </button>
-
-          </div>
-        )}
+        {loading && <PosterGridSkeleton />}
 
         {/* EMPTY */}
 
         {!loading &&
-          !error &&
+          !displayError &&
           watchlist.length === 0 && (
             <div className="text-center py-20">
 
-              <p className="text-gray-400 text-lg">
-                Your Watchlist is empty.
+              <BookmarkIcon className="w-10 h-10 mx-auto mb-5 text-gray-700" />
+
+              <h2 className="text-white text-xl font-semibold">
+                Your watchlist is empty
+              </h2>
+
+              <p className="text-gray-400 mt-2 max-w-md mx-auto">
+                Add something you want to watch later.
               </p>
 
-              <p className="text-gray-600 mt-2">
-                Open a movie or web series and press + to add it.
-              </p>
+              <Link
+                to="/"
+                className="inline-block mt-7 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold transition"
+              >
+                Discover Something
+              </Link>
 
             </div>
           )}
 
-        {/* WATCHLIST */}
+        {/* ERROR + EXISTING ITEMS */}
 
         {!loading &&
-          !error &&
-          watchlist.length > 0 && (
-
+          (displayError || watchlist.length > 0) && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
 
               {watchlist.map((item) => {
@@ -198,7 +161,7 @@ function Watchlist() {
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${item.media_type}-${item.movie_id}`}
                     className="group"
                   >
 
@@ -248,10 +211,10 @@ function Watchlist() {
                     {/* REMOVE */}
 
                     <button
-                      onClick={() => handleRemove(item.id)}
-                      className="w-full mt-3 bg-red-600/20 border border-red-500/30 hover:bg-red-600 text-red-400 hover:text-white py-2 rounded-lg font-semibold transition"
+                      onClick={() => handleRemove(item)}
+                      className="w-full mt-3 bg-red-600/20 border border-red-500/30 hover:bg-red-600 hover:text-white text-red-400 py-2 rounded-lg font-semibold transition"
                     >
-                      Remove 🔖
+                      Remove
                     </button>
 
                   </div>

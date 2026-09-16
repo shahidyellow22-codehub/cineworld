@@ -1,6 +1,11 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+
+import SavedItemsProvider from "./context/SavedItemsContext";
 
 import Navbar from "./components/Navbar";
+import AuthHeader from "./components/AuthHeader";
+import SmoothScroll from "./components/SmoothScroll";
+import Footer from "./components/Footer";
 
 import Home from "./pages/Home";
 import Movies from "./pages/Movies";
@@ -14,51 +19,102 @@ import Details from "./pages/Details";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import AuthCallback from "./pages/AuthCallback";
 
 import Search from "./pages/Search";
 
+const AUTH_PATHS = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/callback",
+];
+
+function AppShell() {
+  const location = useLocation();
+
+  const isAuthPage = AUTH_PATHS.includes(
+    location.pathname
+  );
+
+  const routesElement = (
+    <Routes>
+
+      {/* HOME */}
+      <Route path="/" element={<Home />} />
+
+      {/* MOVIES */}
+      <Route path="/movies" element={<Movies />} />
+
+      {/* WEB SERIES */}
+      <Route path="/webseries" element={<WebSeries />} />
+
+      {/* ANIME */}
+      <Route path="/anime" element={<Anime />} />
+
+      {/* FAVORITES */}
+      <Route path="/favorites" element={<Favorites />} />
+
+      {/* WATCHLIST */}
+      <Route path="/watchlist" element={<Watchlist />} />
+
+      {/* TV / ANIME DETAILS */}
+      <Route path="/tv/:id" element={<Details />} />
+
+      {/* TEMPORARY MOVIE DETAILS */}
+      <Route path="/movie/:id" element={<Details />} />
+
+      {/* SEARCH */}
+      <Route path="/search" element={<Search />} />
+
+      {/* LOGIN */}
+      <Route path="/login" element={<Login />} />
+
+      {/* REGISTER */}
+      <Route path="/register" element={<Register />} />
+
+      {/* SUPABASE AUTH (parallel; Flask login still active) */}
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+
+    </Routes>
+  );
+
+  return (
+    <div className="flex min-h-screen flex-col bg-black">
+      {isAuthPage ? (
+        <>
+          <AuthHeader />
+          <div className="flex-1">
+            {routesElement}
+          </div>
+        </>
+      ) : (
+        <>
+          <Navbar />
+          <SmoothScroll>
+            <main className="flex-1">
+              {routesElement}
+            </main>
+          </SmoothScroll>
+          <Footer />
+        </>
+      )}
+    </div>
+  );
+}
+
 function App() {
   return (
-    <BrowserRouter>
-      <Navbar />
-
-      <Routes>
-
-        {/* HOME */}
-        <Route path="/" element={<Home />} />
-
-        {/* MOVIES */}
-        <Route path="/movies" element={<Movies />} />
-
-        {/* WEB SERIES */}
-        <Route path="/webseries" element={<WebSeries />} />
-
-        {/* ANIME */}
-        <Route path="/anime" element={<Anime />} />
-
-        {/* FAVORITES */}
-        <Route path="/favorites" element={<Favorites />} />
-
-        {/* WATCHLIST */}
-        <Route path="/watchlist" element={<Watchlist />} />
-
-        {/* TV / ANIME DETAILS */}
-        <Route path="/tv/:id" element={<Details />} />
-
-        {/* TEMPORARY MOVIE DETAILS */}
-        <Route path="/movie/:id" element={<Details />} />
-
-        {/* SEARCH */}
-        <Route path="/search" element={<Search />} />
-
-        {/* LOGIN */}
-        <Route path="/login" element={<Login />} />
-
-        {/* REGISTER */}
-        <Route path="/register" element={<Register />} />
-
-      </Routes>
-    </BrowserRouter>
+    <SavedItemsProvider>
+      <BrowserRouter>
+        <AppShell />
+      </BrowserRouter>
+    </SavedItemsProvider>
   );
 }
 
